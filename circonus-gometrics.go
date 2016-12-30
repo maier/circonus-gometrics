@@ -73,7 +73,8 @@ type CirconusMetrics struct {
 	flushInterval   time.Duration
 	flushing        bool
 	flushmu         sync.Mutex
-	check           *checkmgr.CheckManager
+
+	check *checkmgr.CheckManager
 
 	counters map[string]uint64
 	cm       sync.Mutex
