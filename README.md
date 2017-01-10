@@ -43,7 +43,7 @@ func main() {
 
 	logger.Println("Creating new cgm instance")
 
-	metrics, err := cgm.NewCirconusMetrics(cmc)
+	metrics, err := cgm.New(cmc)
 	if err != nil {
         logger.Println(err)
 		os.Exit(1)
@@ -148,7 +148,7 @@ func main() {
 
 	logger.Println("Creating new cgm instance")
 
-	metrics, err := cgm.NewCirconusMetrics(cmc)
+	metrics, err := cgm.New(cmc)
 	if err != nil {
         logger.Println(err)
 		os.Exit(1)
@@ -222,7 +222,7 @@ func main() {
     cmc := &cgm.Config{}
     cmc.CheckManager.API.TokenKey = os.Getenv("CIRCONUS_API_TOKEN")
 
-    metrics, err := cgm.NewCirconusMetrics(cmc)
+    metrics, err := cgm.New(cmc)
     if err != nil {
         panic(err)
     }
