@@ -82,10 +82,13 @@ type CheckConfig struct {
 	// in the UI) **only relevant when check management is enabled**
 	// e.g. 5m, 30m, 1h, etc.
 	MaxURLAge string
-	// force metric activation - if a metric has been disabled via the UI
-	// the default behavior is to *not* re-activate the metric; this setting
-	// overrides the behavior and will re-activate the metric when it is
-	// encountered. "(true|false)", default "false"
+	// MetricDenyList defines a list of regular expressions for metrics which
+	// should **NOT** be collected. (default: ^$)
+	MetricDenyList []string
+	// DEPRECATED force metric activation - if a metric has been disabled via
+	// the UI the default behavior is to *not* re-activate the metric; this
+	// setting overrides the behavior and will re-activate the metric when it
+	// is encountered. "(true|false)", default "false"
 	ForceMetricActivation string
 	// Type of check to use (default: httptrap)
 	Type string
@@ -162,6 +165,7 @@ type CheckManager struct {
 	customConfigFields    map[string]string
 	checkSubmissionURL    api.URLType
 	checkDisplayName      CheckDisplayNameType
+	checkMetricDenyList   []string
 	forceMetricActivation bool
 	forceCheckUpdate      bool
 
@@ -275,15 +279,24 @@ func New(cfg *Config) (*CheckManager, error) {
 	cm.checkDisplayName = CheckDisplayNameType(cfg.Check.DisplayName)
 	cm.checkSecret = CheckSecretType(cfg.Check.Secret)
 
-	fma := defaultForceMetricActivation
-	if cfg.Check.ForceMetricActivation != "" {
-		fma = cfg.Check.ForceMetricActivation
+	mdl := cfg.Check.MetricDenyList
+	if len(mdl) > 0 {
+		cm.checkMetricDenyList = mdl
 	}
-	fm, err := strconv.ParseBool(fma)
-	if err != nil {
-		return nil, errors.Wrap(err, "parsing force metric activation")
+
+	if len(mdl) > 0 {
+		cm.Log.Println("[WARN] force metric activation DEPRECATED - using Config.Check.MetricDenyList")
+	} else {
+		fma := defaultForceMetricActivation
+		if cfg.Check.ForceMetricActivation != "" {
+			fma = cfg.Check.ForceMetricActivation
+		}
+		fm, err := strconv.ParseBool(fma)
+		if err != nil {
+			return nil, errors.Wrap(err, "parsing force metric activation")
+		}
+		cm.forceMetricActivation = fm
 	}
-	cm.forceMetricActivation = fm
 
 	_, an := path.Split(os.Args[0])
 	hn, err := os.Hostname()
@@ -400,6 +413,11 @@ func (cm *CheckManager) IsReady() bool {
 	return cm.initialized
 }
 
+// UsingDenyList reflects whether check is using a metric deny list
+func (cm *CheckManager) UsingDenyList() bool {
+	return len(cm.checkMetricDenyList) > 0
+}
+
 // GetSubmissionURL returns submission url for circonus
 func (cm *CheckManager) GetSubmissionURL() (*Trap, error) {
 	if cm.trapURL == "" {
@@ -458,18 +476,23 @@ func (cm *CheckManager) GetSubmissionURL() (*Trap, error) {
 			return trap, nil
 		}
 
-		if cm.certPool == nil {
-			if err := cm.loadCACert(); err != nil {
-				return nil, errors.Wrap(err, "get submission url")
+		// api.circonus.com uses a public CA signed certificate
+		// trap.noit.circonus.net uses Circonus CA private certificate
+		// enterprise brokers use private CA certificate
+		if trap.URL.Hostname() != "api.circonus.com" {
+			if cm.certPool == nil {
+				if err := cm.loadCACert(); err != nil {
+					return nil, errors.Wrap(err, "get submission url")
+				}
 			}
+			t := &tls.Config{
+				RootCAs: cm.certPool,
+			}
+			if cm.trapCN != "" {
+				t.ServerName = string(cm.trapCN)
+			}
+			trap.TLS = t
 		}
-		t := &tls.Config{
-			RootCAs: cm.certPool,
-		}
-		if cm.trapCN != "" {
-			t.ServerName = string(cm.trapCN)
-		}
-		trap.TLS = t
 	}
 
 	return trap, nil
