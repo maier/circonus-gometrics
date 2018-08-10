@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -233,6 +232,7 @@ func TestUpdateCheck(t *testing.T) {
 
 	cm := &CheckManager{
 		enabled: true,
+		Log:     log.New(ioutil.Discard, "", log.LstdFlags),
 	}
 	ac := &api.Config{
 		TokenApp: "abcd",
@@ -333,6 +333,7 @@ func TestCreateNewCheck(t *testing.T) {
 		checkTarget:           "test",
 		brokerMaxResponseTime: time.Duration(time.Millisecond * 500),
 		checkType:             "httptrap",
+		Log:                   log.New(ioutil.Discard, "", log.LstdFlags),
 	}
 
 	ac := &api.Config{
@@ -374,8 +375,8 @@ func TestInitializeTrapURL(t *testing.T) {
 	cm := &CheckManager{
 		enabled: false,
 		Debug:   false,
-		Log:     log.New(os.Stdout, "", log.LstdFlags),
-		// Log: log.New(ioutil.Discard, "", log.LstdFlags),
+		// Log:     log.New(os.Stdout, "", log.LstdFlags),
+		Log: log.New(ioutil.Discard, "", log.LstdFlags),
 	}
 
 	t.Log("invalid")

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -182,7 +183,9 @@ func TestBrokerSupportsCheckType(t *testing.T) {
 		Modules: []string{"httptrap"},
 	}
 
-	cm := CheckManager{}
+	cm := CheckManager{
+		Log: log.New(ioutil.Discard, "", log.LstdFlags),
+	}
 
 	t.Log("supports 'httptrap' check type?")
 	{
@@ -272,6 +275,7 @@ func TestSelectBroker(t *testing.T) {
 		cm := &CheckManager{
 			checkType:             "httptrap",
 			brokerMaxResponseTime: time.Duration(time.Millisecond * 500),
+			Log: log.New(ioutil.Discard, "", log.LstdFlags),
 		}
 		ac := &api.Config{
 			TokenApp: "abcd",
@@ -352,7 +356,8 @@ func TestSelectBroker(t *testing.T) {
 
 func TestIsValidBroker(t *testing.T) {
 	cm := &CheckManager{
-		Log:                   log.New(os.Stderr, "", log.LstdFlags),
+		// Log:                   log.New(os.Stderr, "", log.LstdFlags),
+		Log:                   log.New(ioutil.Discard, "", log.LstdFlags),
 		checkType:             "httptrap",
 		brokerMaxResponseTime: time.Duration(time.Millisecond * 50),
 	}
@@ -404,7 +409,8 @@ func TestIsValidBrokerTimeout(t *testing.T) {
 	}
 
 	cm := &CheckManager{
-		Log:                   log.New(os.Stderr, "", log.LstdFlags),
+		// Log:                   log.New(os.Stderr, "", log.LstdFlags),
+		Log:                   log.New(ioutil.Discard, "", log.LstdFlags),
 		checkType:             "httptrap",
 		brokerMaxResponseTime: time.Duration(time.Millisecond * 50),
 	}
@@ -482,7 +488,9 @@ func TestGetBroker(t *testing.T) {
 
 	t.Log("invalid custom broker")
 	{
-		cm := &CheckManager{}
+		cm := &CheckManager{
+			Log: log.New(ioutil.Discard, "", log.LstdFlags),
+		}
 		ac := &api.Config{
 			TokenApp: "abcd",
 			TokenKey: "1234",
@@ -509,6 +517,7 @@ func TestGetBroker(t *testing.T) {
 		cm := &CheckManager{
 			checkType:             "httptrap",
 			brokerMaxResponseTime: time.Duration(time.Millisecond * 500),
+			Log: log.New(ioutil.Discard, "", log.LstdFlags),
 		}
 		ac := &api.Config{
 			TokenApp: "abcd",

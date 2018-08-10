@@ -333,7 +333,8 @@ func TestNewCheckManager(t *testing.T) {
 		testCMBroker.Details[0].ExternalHost = &hostParts[0]
 		testCMBroker.Details[0].ExternalPort = uint16(hostPort)
 		cfg := &Config{
-			Log: log.New(os.Stderr, "", log.LstdFlags),
+			// Log: log.New(os.Stderr, "", log.LstdFlags),
+			Log: log.New(ioutil.Discard, "", log.LstdFlags),
 			API: api.Config{
 				TokenKey: "1234",
 				TokenApp: "abc",

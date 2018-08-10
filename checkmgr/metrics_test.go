@@ -5,6 +5,8 @@
 package checkmgr
 
 import (
+	"io/ioutil"
+	"log"
 	"reflect"
 	"testing"
 
@@ -13,7 +15,9 @@ import (
 
 func TestIsMetricActive(t *testing.T) {
 
-	cm := &CheckManager{}
+	cm := &CheckManager{
+		Log: log.New(ioutil.Discard, "", log.LstdFlags),
+	}
 
 	cm.availableMetrics = map[string]bool{
 		"foo": true,
@@ -43,7 +47,9 @@ func TestIsMetricActive(t *testing.T) {
 }
 
 func TestActivateMetric(t *testing.T) {
-	cm := &CheckManager{}
+	cm := &CheckManager{
+		Log: log.New(ioutil.Discard, "", log.LstdFlags),
+	}
 	cm.checkBundle = &api.CheckBundle{}
 	cm.checkBundle.Metrics = []api.CheckBundleMetric{
 		{
@@ -95,7 +101,9 @@ func TestActivateMetric(t *testing.T) {
 }
 
 func TestInventoryMetrics(t *testing.T) {
-	cm := &CheckManager{}
+	cm := &CheckManager{
+		Log: log.New(ioutil.Discard, "", log.LstdFlags),
+	}
 	cm.checkBundle = &api.CheckBundle{}
 	cm.checkBundle.Metrics = []api.CheckBundleMetric{
 		{
@@ -152,7 +160,9 @@ func TestInventoryMetrics(t *testing.T) {
 }
 
 func TestAddMetricTags(t *testing.T) {
-	cm := &CheckManager{}
+	cm := &CheckManager{
+		Log: log.New(ioutil.Discard, "", log.LstdFlags),
+	}
 	cm.checkBundle = &api.CheckBundle{}
 	cm.metricTags = make(map[string][]string)
 
@@ -315,7 +325,9 @@ func TestAddMetricTags(t *testing.T) {
 }
 
 func TestAddNewMetrics(t *testing.T) {
-	cm := &CheckManager{}
+	cm := &CheckManager{
+		Log: log.New(ioutil.Discard, "", log.LstdFlags),
+	}
 
 	newMetrics := make(map[string]*api.CheckBundleMetric)
 

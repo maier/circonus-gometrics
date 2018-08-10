@@ -7,6 +7,8 @@ package checkmgr
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -45,6 +47,7 @@ func TestLoadCACert(t *testing.T) {
 
 	cm := &CheckManager{
 		enabled: false,
+		Log:     log.New(ioutil.Discard, "", log.LstdFlags),
 	}
 
 	cm.loadCACert()
@@ -65,6 +68,7 @@ func TestFetchCert(t *testing.T) {
 
 	cm := &CheckManager{
 		enabled: true,
+		Log:     log.New(ioutil.Discard, "", log.LstdFlags),
 	}
 	ac := &api.Config{
 		TokenApp: "abcd",
