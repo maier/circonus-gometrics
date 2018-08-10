@@ -44,6 +44,7 @@ type CheckBundle struct {
 	LastModifedBy      string              `json:"_last_modifed_by,omitempty"`         // string
 	LastModified       uint                `json:"_last_modified,omitempty"`           // uint
 	MetricLimit        int                 `json:"metric_limit,omitempty"`             // int
+	MetricDenyList     []string            `json:"metric_blacklists"`                  // []string len >= 0
 	Metrics            []CheckBundleMetric `json:"metrics"`                            // [] >= 0
 	Notes              *string             `json:"notes,omitempty"`                    // string or null
 	Period             uint                `json:"period,omitempty"`                   // uint
