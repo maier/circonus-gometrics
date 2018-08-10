@@ -36,6 +36,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -86,6 +87,7 @@ type prevMetrics struct {
 type CirconusMetrics struct {
 	Log   *log.Logger
 	Debug bool
+	trace bool
 
 	resetCounters   bool
 	resetGauges     bool
@@ -97,6 +99,8 @@ type CirconusMetrics struct {
 	packagingmu     sync.Mutex
 	check           *checkmgr.CheckManager
 	lastMetrics     *prevMetrics
+
+	metricTags map[string]map[string]string
 
 	counters map[string]uint64
 	cm       sync.Mutex
@@ -141,10 +145,12 @@ func New(cfg *Config) (*CirconusMetrics, error) {
 		text:         make(map[string]string),
 		textFuncs:    make(map[string]func() string),
 		lastMetrics:  &prevMetrics{},
+		metricTags:   make(map[string]map[string]string),
 	}
 
 	// Logging
 	{
+		cm.trace = true // manual at the moment
 		cm.Debug = cfg.Debug
 		cm.Log = cfg.Log
 
@@ -258,62 +264,83 @@ func (m *CirconusMetrics) packageMetrics() (map[string]*api.CheckBundleMetric, M
 	counters, gauges, histograms, text := m.snapshot()
 	newMetrics := make(map[string]*api.CheckBundleMetric)
 	output := make(Metrics, len(counters)+len(gauges)+len(histograms)+len(text))
+	manualCheckUpdate := !m.check.UsingDenyList()
 	for name, value := range counters {
-		send := m.check.IsMetricActive(name)
-		if !send && m.check.ActivateMetric(name) {
-			send = true
-			newMetrics[name] = &api.CheckBundleMetric{
-				Name:   name,
-				Type:   "numeric",
-				Status: "active",
+		if manualCheckUpdate {
+			send := m.check.IsMetricActive(name)
+			if !send && m.check.ActivateMetric(name) {
+				send = true
+				newMetrics[name] = &api.CheckBundleMetric{
+					Name:   name,
+					Type:   "numeric",
+					Status: "active",
+				}
 			}
-		}
-		if send {
+			if send {
+				output[name] = Metric{Type: "L", Value: value}
+			}
+		} else {
+			name += m.getMetricStreamTags(name)
 			output[name] = Metric{Type: "L", Value: value}
 		}
 	}
 
 	for name, value := range gauges {
-		send := m.check.IsMetricActive(name)
-		if !send && m.check.ActivateMetric(name) {
-			send = true
-			newMetrics[name] = &api.CheckBundleMetric{
-				Name:   name,
-				Type:   "numeric",
-				Status: "active",
+		if manualCheckUpdate {
+			send := m.check.IsMetricActive(name)
+			if !send && m.check.ActivateMetric(name) {
+				send = true
+				newMetrics[name] = &api.CheckBundleMetric{
+					Name:   name,
+					Type:   "numeric",
+					Status: "active",
+				}
 			}
-		}
-		if send {
+			if send {
+				output[name] = Metric{Type: m.getGaugeType(value), Value: value}
+			}
+		} else {
+			name += m.getMetricStreamTags(name)
 			output[name] = Metric{Type: m.getGaugeType(value), Value: value}
 		}
 	}
 
 	for name, value := range histograms {
-		send := m.check.IsMetricActive(name)
-		if !send && m.check.ActivateMetric(name) {
-			send = true
-			newMetrics[name] = &api.CheckBundleMetric{
-				Name:   name,
-				Type:   "histogram",
-				Status: "active",
+		if manualCheckUpdate {
+			send := m.check.IsMetricActive(name)
+			if !send && m.check.ActivateMetric(name) {
+				send = true
+				newMetrics[name] = &api.CheckBundleMetric{
+					Name:   name,
+					Type:   "histogram",
+					Status: "active",
+				}
 			}
-		}
-		if send {
+			if send {
+				output[name] = Metric{Type: "n", Value: value.DecStrings()}
+			}
+		} else {
+			name += m.getMetricStreamTags(name)
 			output[name] = Metric{Type: "n", Value: value.DecStrings()}
 		}
 	}
 
 	for name, value := range text {
-		send := m.check.IsMetricActive(name)
-		if !send && m.check.ActivateMetric(name) {
-			send = true
-			newMetrics[name] = &api.CheckBundleMetric{
-				Name:   name,
-				Type:   "text",
-				Status: "active",
+		if manualCheckUpdate {
+			send := m.check.IsMetricActive(name)
+			if !send && m.check.ActivateMetric(name) {
+				send = true
+				newMetrics[name] = &api.CheckBundleMetric{
+					Name:   name,
+					Type:   "text",
+					Status: "active",
+				}
 			}
-		}
-		if send {
+			if send {
+				output[name] = Metric{Type: "s", Value: value}
+			}
+		} else {
+			name += m.getMetricStreamTags(name)
 			output[name] = Metric{Type: "s", Value: value}
 		}
 	}
@@ -324,6 +351,21 @@ func (m *CirconusMetrics) packageMetrics() (map[string]*api.CheckBundleMetric, M
 	m.lastMetrics.ts = time.Now()
 
 	return newMetrics, output
+}
+
+func (m *CirconusMetrics) getMetricStreamTags(metricName string) string {
+	if tags, found := m.metricTags[metricName]; found {
+		if len(tags) > 0 {
+			tagList := []string{}
+			for t, v := range tags {
+				tagList = append(tagList, t+":"+v)
+			}
+			sort.Strings(tagList)
+
+			return "|ST[" + strings.Join(tagList, ",") + "]"
+		}
+	}
+	return ""
 }
 
 // PromOutput returns lines of metrics in prom format
