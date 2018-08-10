@@ -29,16 +29,23 @@ func (m *CirconusMetrics) submit(output Metrics, newMetrics map[string]*api.Chec
 		return
 	}
 
-	// update check if there are any new metrics or, if metric tags have been added since last submit
-	m.check.UpdateCheck(newMetrics)
+	if !m.check.UsingDenyList() {
+		// DEPRECATED - using check bundle's metric_blacklists attribute now
+		// update check if there are any new metrics or, if metric tags have been added since last submit
+		m.check.UpdateCheck(newMetrics)
+	}
 
-	str, err := json.Marshal(output)
+	data, err := json.Marshal(output)
 	if err != nil {
 		m.Log.Printf("[ERROR] marshaling output %+v", err)
 		return
 	}
 
-	numStats, err := m.trapCall(str)
+	if m.trace {
+		m.Log.Println("[TRACE] submitting", string(data))
+	}
+
+	numStats, err := m.trapCall(data)
 	if err != nil {
 		m.Log.Printf("[ERROR] %+v\n", err)
 		return
