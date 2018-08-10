@@ -19,8 +19,13 @@ import (
 	"github.com/circonus-labs/circonus-gometrics/api/config"
 )
 
-// UpdateCheck determines if the check needs to be updated (new metrics, tags, etc.)
+// UpdateCheck DEPRECATED determines if the check needs to be updated (new metrics, tags, etc.)
 func (cm *CheckManager) UpdateCheck(newMetrics map[string]*api.CheckBundleMetric) {
+	if cm.UsingDenyList() {
+		cm.Log.Println("[WARN] UpdateCheck DEPRECATED - using Config.Check.MetricDenyList")
+		return
+	}
+
 	// only if check manager is enabled
 	if !cm.enabled {
 		return
@@ -40,7 +45,7 @@ func (cm *CheckManager) UpdateCheck(newMetrics map[string]*api.CheckBundleMetric
 	cid := cm.checkBundle.CID
 	checkBundle, err := cm.apih.FetchCheckBundle(api.CIDType(&cid))
 	if err != nil {
-		cm.Log.Printf("[ERROR] unable to fetch up-to-date check bundle %v", err)
+		cm.Log.Println("[ERROR] unable to fetch up-to-date check bundle", err)
 		return
 	}
 	cm.cbmu.Lock()
@@ -71,7 +76,7 @@ func (cm *CheckManager) UpdateCheck(newMetrics map[string]*api.CheckBundleMetric
 	if cm.forceCheckUpdate {
 		newCheckBundle, err := cm.apih.UpdateCheckBundle(cm.checkBundle)
 		if err != nil {
-			cm.Log.Printf("[ERROR] updating check bundle %v", err)
+			cm.Log.Println("[ERROR] updating check bundle", err)
 			return
 		}
 
@@ -205,7 +210,11 @@ func (cm *CheckManager) initializeTrapURL() error {
 
 	// retain to facilitate metric management (adding new metrics specifically)
 	cm.checkBundle = checkBundle
-	cm.inventoryMetrics()
+
+	if !cm.UsingDenyList() {
+		// DEPRECATED - no longer need t omanage metrics - use check bundle metric_blacklists attribute
+		cm.inventoryMetrics()
+	}
 
 	// determine the trap url to which metrics should be PUT
 	if checkBundle.Type == "httptrap" {
@@ -308,18 +317,19 @@ func (cm *CheckManager) createNewCheck() (*api.CheckBundle, *api.Broker, error) 
 	}
 
 	chkcfg := &api.CheckBundle{
-		Brokers:     []string{broker.CID},
-		Config:      make(map[config.Key]string),
-		DisplayName: string(cm.checkDisplayName),
-		Metrics:     []api.CheckBundleMetric{},
-		MetricLimit: config.DefaultCheckBundleMetricLimit,
-		Notes:       cm.getNotes(),
-		Period:      60,
-		Status:      statusActive,
-		Tags:        append(cm.checkSearchTag, cm.checkTags...),
-		Target:      string(cm.checkTarget),
-		Timeout:     10,
-		Type:        string(cm.checkType),
+		Brokers:        []string{broker.CID},
+		Config:         make(map[config.Key]string),
+		DisplayName:    string(cm.checkDisplayName),
+		Metrics:        []api.CheckBundleMetric{},
+		MetricDenyList: cm.checkMetricDenyList,
+		MetricLimit:    config.DefaultCheckBundleMetricLimit,
+		Notes:          cm.getNotes(),
+		Period:         60,
+		Status:         statusActive,
+		Tags:           append(cm.checkSearchTag, cm.checkTags...),
+		Target:         string(cm.checkTarget),
+		Timeout:        10,
+		Type:           string(cm.checkType),
 	}
 
 	if len(cm.customConfigFields) > 0 {
