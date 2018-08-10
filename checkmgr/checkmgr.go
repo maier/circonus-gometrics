@@ -479,20 +479,22 @@ func (cm *CheckManager) GetSubmissionURL() (*Trap, error) {
 		// api.circonus.com uses a public CA signed certificate
 		// trap.noit.circonus.net uses Circonus CA private certificate
 		// enterprise brokers use private CA certificate
-		if trap.URL.Hostname() != "api.circonus.com" {
-			if cm.certPool == nil {
-				if err := cm.loadCACert(); err != nil {
-					return nil, errors.Wrap(err, "get submission url")
-				}
-			}
-			t := &tls.Config{
-				RootCAs: cm.certPool,
-			}
-			if cm.trapCN != "" {
-				t.ServerName = string(cm.trapCN)
-			}
-			trap.TLS = t
+		if trap.URL.Hostname() == "api.circonus.com" {
+			return trap, nil
 		}
+		if cm.certPool == nil {
+			if err := cm.loadCACert(); err != nil {
+				return nil, errors.Wrap(err, "get submission url")
+			}
+		}
+		t := &tls.Config{
+			RootCAs: cm.certPool,
+		}
+		if cm.trapCN != "" {
+			t.ServerName = string(cm.trapCN)
+		}
+		trap.TLS = t
+
 	}
 
 	return trap, nil
