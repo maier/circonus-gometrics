@@ -8,16 +8,26 @@ import (
 	"github.com/circonus-labs/circonus-gometrics/api"
 )
 
-// IsMetricActive checks whether a given metric name is currently active(enabled)
+// IsMetricActive DEPRECATED checks whether a given metric name is currently active(enabled)
 func (cm *CheckManager) IsMetricActive(name string) bool {
+	if cm.UsingDenyList() {
+		cm.Log.Println("[WARN] IsMetricActive DEPRECATED - using Config.Check.MetricDenyList")
+		return true
+	}
+
 	cm.availableMetricsmu.Lock()
 	defer cm.availableMetricsmu.Unlock()
 
 	return cm.availableMetrics[name]
 }
 
-// ActivateMetric determines if a given metric should be activated
+// ActivateMetric DEPRECATED determines if a given metric should be activated
 func (cm *CheckManager) ActivateMetric(name string) bool {
+	if cm.UsingDenyList() {
+		cm.Log.Println("[WARN] ActivateMetric DEPRECATED - using Config.Check.MetricDenyList")
+		return false
+	}
+
 	cm.availableMetricsmu.Lock()
 	defer cm.availableMetricsmu.Unlock()
 
@@ -34,8 +44,13 @@ func (cm *CheckManager) ActivateMetric(name string) bool {
 	return false
 }
 
-// AddMetricTags updates check bundle metrics with tags
+// AddMetricTags DEPRECATED updates check bundle metrics with tags
 func (cm *CheckManager) AddMetricTags(metricName string, tags []string, appendTags bool) bool {
+	if cm.UsingDenyList() {
+		cm.Log.Println("[WARN] checkmgr.AddMetricTags DEPRECATED - using Config.Check.MetricDenyList")
+		return true
+	}
+
 	tagsUpdated := false
 
 	if appendTags && len(tags) == 0 {
@@ -95,8 +110,13 @@ func (cm *CheckManager) AddMetricTags(metricName string, tags []string, appendTa
 	return tagsUpdated
 }
 
-// addNewMetrics updates a check bundle with new metrics
+// addNewMetrics DEPRECATED updates a check bundle with new metrics
 func (cm *CheckManager) addNewMetrics(newMetrics map[string]*api.CheckBundleMetric) bool {
+	if cm.UsingDenyList() {
+		cm.Log.Println("[WARN] addNewMetrics DEPRECATED - using Config.Check.MetricDenyList")
+		return false
+	}
+
 	updatedCheckBundle := false
 
 	if cm.checkBundle == nil || len(newMetrics) == 0 {
@@ -131,8 +151,13 @@ func (cm *CheckManager) addNewMetrics(newMetrics map[string]*api.CheckBundleMetr
 	return updatedCheckBundle
 }
 
-// inventoryMetrics creates list of active metrics in check bundle
+// inventoryMetrics DEPRECATED creates list of active metrics in check bundle
 func (cm *CheckManager) inventoryMetrics() {
+	if cm.UsingDenyList() {
+		cm.Log.Println("[WARN] inventoryMetrics DEPRECATED - using Config.Check.MetricDenyList")
+		return
+	}
+
 	availableMetrics := make(map[string]bool)
 	for _, metric := range cm.checkBundle.Metrics {
 		availableMetrics[metric.Name] = metric.Status == "active"
@@ -142,7 +167,7 @@ func (cm *CheckManager) inventoryMetrics() {
 	cm.availableMetricsmu.Unlock()
 }
 
-// countNewTags returns a count of new tags which do not exist in the current list of tags
+// countNewTags DEPRECATED returns a count of new tags which do not exist in the current list of tags
 func countNewTags(currTags []string, newTags []string) int {
 	if len(newTags) == 0 {
 		return 0
