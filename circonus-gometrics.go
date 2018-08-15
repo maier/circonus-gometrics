@@ -55,6 +55,8 @@ const (
 type Metric struct {
 	Type  string      `json:"_type"`
 	Value interface{} `json:"_value"`
+	// TBD if this will be ultimate solution for the histogram issue
+	// IsHistogram bool        `json:"_histogram,omitempty"`
 }
 
 // Metrics holds host metrics
@@ -322,6 +324,7 @@ func (m *CirconusMetrics) packageMetrics() (map[string]*api.CheckBundleMetric, M
 		} else {
 			name += m.getMetricStreamTags(name)
 			output[name] = Metric{Type: "n", Value: value.DecStrings()}
+			// output[name] = Metric{Type: "n", Value: value.DecStrings(), IsHistogram: true}
 		}
 	}
 
