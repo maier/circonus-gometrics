@@ -1,3 +1,11 @@
+# v2.4.0
+
+* fix: do not reset counter|gauge|text funcs after each snapshot (only on explicit call to Reset)
+* upd: dashboards - optional widget attributes - which are structs - should be pointers for correct omission in json sent to api
+* fix: dashboards - remove `omitempty` from required attributes
+* fix: graphs - remove `omitempty` from required attributes
+* fix: worksheets - correct attribute name, remove `omitempty` from required attributes
+
 # v2.1.3
 
 * fix: handle case where a broker has no external host or ip set
