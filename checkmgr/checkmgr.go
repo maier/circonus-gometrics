@@ -482,6 +482,7 @@ func (cm *CheckManager) GetSubmissionURL() (*Trap, error) {
 		if trap.URL.Hostname() == "api.circonus.com" {
 			return trap, nil
 		}
+
 		if cm.certPool == nil {
 			if err := cm.loadCACert(); err != nil {
 				return nil, errors.Wrap(err, "get submission url")
