@@ -279,6 +279,7 @@ func New(cfg *Config) (*CheckManager, error) {
 	cm.checkDisplayName = CheckDisplayNameType(cfg.Check.DisplayName)
 	cm.checkSecret = CheckSecretType(cfg.Check.Secret)
 
+	// NOTE: do not default to enabled
 	mdl := cfg.Check.MetricDenyList
 	if len(mdl) > 0 {
 		cm.checkMetricDenyList = mdl
