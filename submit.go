@@ -29,8 +29,8 @@ func (m *CirconusMetrics) submit(output Metrics, newMetrics map[string]*api.Chec
 		return
 	}
 
-	if !m.check.UsingDenyList() {
-		// DEPRECATED - using check bundle's metric_blacklists attribute now
+	if !m.check.UsingMetricRules() {
+		// DEPRECATED - using check bundle's metric allow/deny rules now
 		// update check if there are any new metrics or, if metric tags have been added since last submit
 		m.check.UpdateCheck(newMetrics)
 	}

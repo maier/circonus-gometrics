@@ -55,8 +55,6 @@ const (
 type Metric struct {
 	Type  string      `json:"_type"`
 	Value interface{} `json:"_value"`
-	// TBD if this will be ultimate solution for the histogram issue
-	// IsHistogram bool        `json:"_histogram,omitempty"`
 }
 
 // Metrics holds host metrics
@@ -266,85 +264,93 @@ func (m *CirconusMetrics) packageMetrics() (map[string]*api.CheckBundleMetric, M
 	counters, gauges, histograms, text := m.snapshot()
 	newMetrics := make(map[string]*api.CheckBundleMetric)
 	output := make(Metrics, len(counters)+len(gauges)+len(histograms)+len(text))
-	manualCheckUpdate := !m.check.UsingDenyList()
+
+	// Does this check have metric allow/deny rules set? If so simply send
+	// everything to the broker. Do not manage individual metrics by
+	// updating the check itself.
+	usingRules := m.check.UsingMetricRules()
+
+	mType := "L" // default counters to uint64
 	for name, value := range counters {
-		if manualCheckUpdate {
-			send := m.check.IsMetricActive(name)
-			if !send && m.check.ActivateMetric(name) {
-				send = true
-				newMetrics[name] = &api.CheckBundleMetric{
-					Name:   name,
-					Type:   "numeric",
-					Status: "active",
-				}
-			}
-			if send {
-				output[name] = Metric{Type: "L", Value: value}
-			}
-		} else {
+		if usingRules {
 			name += m.getMetricStreamTags(name)
-			output[name] = Metric{Type: "L", Value: value}
+			output[name] = Metric{Type: mType, Value: value}
+			continue
+		}
+		send := m.check.IsMetricActive(name)
+		if !send && m.check.ActivateMetric(name) {
+			send = true
+			newMetrics[name] = &api.CheckBundleMetric{
+				Name:   name,
+				Type:   "numeric",
+				Status: "active",
+			}
+		}
+		if send {
+			output[name] = Metric{Type: mType, Value: value}
 		}
 	}
 
 	for name, value := range gauges {
-		if manualCheckUpdate {
-			send := m.check.IsMetricActive(name)
-			if !send && m.check.ActivateMetric(name) {
-				send = true
-				newMetrics[name] = &api.CheckBundleMetric{
-					Name:   name,
-					Type:   "numeric",
-					Status: "active",
-				}
-			}
-			if send {
-				output[name] = Metric{Type: m.getGaugeType(value), Value: value}
-			}
-		} else {
+		mType = m.getGaugeType(value) // set on a per-value basis
+		if usingRules {
 			name += m.getMetricStreamTags(name)
-			output[name] = Metric{Type: m.getGaugeType(value), Value: value}
+			output[name] = Metric{Type: mType, Value: value}
+			continue
+		}
+		send := m.check.IsMetricActive(name)
+		if !send && m.check.ActivateMetric(name) {
+			send = true
+			newMetrics[name] = &api.CheckBundleMetric{
+				Name:   name,
+				Type:   "numeric",
+				Status: "active",
+			}
+		}
+		if send {
+			output[name] = Metric{Type: mType, Value: value}
 		}
 	}
 
+	mType = "h" // explicit histogram metric type
 	for name, value := range histograms {
-		if manualCheckUpdate {
-			send := m.check.IsMetricActive(name)
-			if !send && m.check.ActivateMetric(name) {
-				send = true
-				newMetrics[name] = &api.CheckBundleMetric{
-					Name:   name,
-					Type:   "histogram",
-					Status: "active",
-				}
-			}
-			if send {
-				output[name] = Metric{Type: "n", Value: value.DecStrings()}
-			}
-		} else {
+		if usingRules {
 			name += m.getMetricStreamTags(name)
-			output[name] = Metric{Type: "n", Value: value.DecStrings()}
-			// output[name] = Metric{Type: "n", Value: value.DecStrings(), IsHistogram: true}
+			output[name] = Metric{Type: mType, Value: value.DecStrings()}
+			continue
+		}
+		send := m.check.IsMetricActive(name)
+		if !send && m.check.ActivateMetric(name) {
+			send = true
+			newMetrics[name] = &api.CheckBundleMetric{
+				Name:   name,
+				Type:   "histogram",
+				Status: "active",
+			}
+		}
+		if send {
+			output[name] = Metric{Type: mType, Value: value.DecStrings()}
 		}
 	}
 
+	mType = "s" // text metric value
 	for name, value := range text {
-		if manualCheckUpdate {
-			send := m.check.IsMetricActive(name)
-			if !send && m.check.ActivateMetric(name) {
-				send = true
-				newMetrics[name] = &api.CheckBundleMetric{
-					Name:   name,
-					Type:   "text",
-					Status: "active",
-				}
-			}
-			if send {
-				output[name] = Metric{Type: "s", Value: value}
-			}
-		} else {
+		if usingRules {
 			name += m.getMetricStreamTags(name)
-			output[name] = Metric{Type: "s", Value: value}
+			output[name] = Metric{Type: mType, Value: value}
+			continue
+		}
+		send := m.check.IsMetricActive(name)
+		if !send && m.check.ActivateMetric(name) {
+			send = true
+			newMetrics[name] = &api.CheckBundleMetric{
+				Name:   name,
+				Type:   "text",
+				Status: "active",
+			}
+		}
+		if send {
+			output[name] = Metric{Type: mType, Value: value}
 		}
 	}
 
@@ -357,6 +363,18 @@ func (m *CirconusMetrics) packageMetrics() (map[string]*api.CheckBundleMetric, M
 }
 
 func (m *CirconusMetrics) getMetricStreamTags(metricName string) string {
+	// if the name HAS stream tags in it, ignore any from calls to
+	// AddMetricTags/SetMetricTags - use one method or the other...
+	if strings.Contains(metricName, "|ST[") {
+		return ""
+	}
+
+	// 1. stream tags only - flag
+	// 2. add check tags to stream tags - flag
+	// 3. any tags from calls to Add/Set
+	// 4. any tags from metric in check bundle
+	// 5. merge into any stream tags explicitly set in metric name
+
 	if tags, found := m.metricTags[metricName]; found {
 		if len(tags) > 0 {
 			tagList := []string{}
@@ -387,10 +405,12 @@ func (m *CirconusMetrics) PromOutput() (*bytes.Buffer, error) {
 
 	for name, metric := range *m.lastMetrics.metrics {
 		switch metric.Type {
-		case "n":
+		case "n": // type 'n' with histogram-specific value syntax DEPRECATED use type 'h'
 			if strings.HasPrefix(fmt.Sprintf("%v", metric.Value), "[H[") {
 				continue // circonus histogram != prom "histogram" (aka percentile)
 			}
+		case "h":
+			continue // circonus histogram != prom "histogram" (aka percentile)
 		case "s":
 			continue // text metrics unsupported
 		}

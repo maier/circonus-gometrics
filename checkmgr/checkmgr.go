@@ -51,6 +51,17 @@ const (
 	statusActive                 = "active"
 )
 
+type MetricAllowRule struct {
+	Name  string
+	Type  string
+	Units string
+}
+
+type MetricRules struct {
+	Deny  []string
+	Allow []MetricAllowRule
+}
+
 // CheckConfig options for check
 type CheckConfig struct {
 	// a specific submission url
@@ -82,9 +93,10 @@ type CheckConfig struct {
 	// in the UI) **only relevant when check management is enabled**
 	// e.g. 5m, 30m, 1h, etc.
 	MaxURLAge string
-	// MetricDenyList defines a list of regular expressions for metrics which
-	// should **NOT** be collected. (default: ^$)
-	MetricDenyList []string
+	// MetricRules allows user to define lists of Deny and Allow regular expressions
+	// which will be configured in the check. NOTE: these are NOT enforced by cgm,
+	// but rather by the broker.
+	MetricRules MetricRules
 	// DEPRECATED force metric activation - if a metric has been disabled via
 	// the UI the default behavior is to *not* re-activate the metric; this
 	// setting overrides the behavior and will re-activate the metric when it
@@ -165,7 +177,7 @@ type CheckManager struct {
 	customConfigFields    map[string]string
 	checkSubmissionURL    api.URLType
 	checkDisplayName      CheckDisplayNameType
-	checkMetricDenyList   []string
+	checkMetricRules      MetricRules
 	forceMetricActivation bool
 	forceCheckUpdate      bool
 
@@ -280,13 +292,10 @@ func New(cfg *Config) (*CheckManager, error) {
 	cm.checkSecret = CheckSecretType(cfg.Check.Secret)
 
 	// NOTE: do not default to enabled
-	mdl := cfg.Check.MetricDenyList
-	if len(mdl) > 0 {
-		cm.checkMetricDenyList = mdl
-	}
+	cm.checkMetricRules = cfg.Check.MetricRules
 
-	if len(mdl) > 0 {
-		cm.Log.Println("[WARN] force metric activation DEPRECATED - using Config.Check.MetricDenyList")
+	if len(cm.checkMetricRules.Allow) > 0 || len(cm.checkMetricRules.Deny) > 0 {
+		cm.Log.Println("[WARN] force metric activation DEPRECATED - using Config.Check.MetricRules")
 	} else {
 		fma := defaultForceMetricActivation
 		if cfg.Check.ForceMetricActivation != "" {
@@ -414,9 +423,9 @@ func (cm *CheckManager) IsReady() bool {
 	return cm.initialized
 }
 
-// UsingDenyList reflects whether check is using a metric deny list
-func (cm *CheckManager) UsingDenyList() bool {
-	return len(cm.checkMetricDenyList) > 0
+// UsingMetricRules reflects whether check is using a metric deny list
+func (cm *CheckManager) UsingMetricRules() bool {
+	return len(cm.checkMetricRules.Deny) > 0 || len(cm.checkMetricRules.Allow) > 0
 }
 
 // GetSubmissionURL returns submission url for circonus

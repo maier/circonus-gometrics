@@ -10,8 +10,8 @@ import (
 
 // IsMetricActive DEPRECATED checks whether a given metric name is currently active(enabled)
 func (cm *CheckManager) IsMetricActive(name string) bool {
-	if cm.UsingDenyList() {
-		cm.Log.Println("[WARN] IsMetricActive DEPRECATED - using Config.Check.MetricDenyList")
+	if cm.UsingMetricRules() {
+		cm.Log.Println("[WARN] IsMetricActive DEPRECATED - using Config.Check.MetricRules")
 		return true
 	}
 
@@ -23,8 +23,8 @@ func (cm *CheckManager) IsMetricActive(name string) bool {
 
 // ActivateMetric DEPRECATED determines if a given metric should be activated
 func (cm *CheckManager) ActivateMetric(name string) bool {
-	if cm.UsingDenyList() {
-		cm.Log.Println("[WARN] ActivateMetric DEPRECATED - using Config.Check.MetricDenyList")
+	if cm.UsingMetricRules() {
+		cm.Log.Println("[WARN] ActivateMetric DEPRECATED - using Config.Check.MetricRules")
 		return false
 	}
 
@@ -46,8 +46,8 @@ func (cm *CheckManager) ActivateMetric(name string) bool {
 
 // AddMetricTags DEPRECATED updates check bundle metrics with tags
 func (cm *CheckManager) AddMetricTags(metricName string, tags []string, appendTags bool) bool {
-	if cm.UsingDenyList() {
-		cm.Log.Println("[WARN] checkmgr.AddMetricTags DEPRECATED - using Config.Check.MetricDenyList")
+	if cm.UsingMetricRules() {
+		cm.Log.Println("[WARN] checkmgr.AddMetricTags DEPRECATED - using Config.Check.MetricRules")
 		return true
 	}
 
@@ -112,8 +112,8 @@ func (cm *CheckManager) AddMetricTags(metricName string, tags []string, appendTa
 
 // addNewMetrics DEPRECATED updates a check bundle with new metrics
 func (cm *CheckManager) addNewMetrics(newMetrics map[string]*api.CheckBundleMetric) bool {
-	if cm.UsingDenyList() {
-		cm.Log.Println("[WARN] addNewMetrics DEPRECATED - using Config.Check.MetricDenyList")
+	if cm.UsingMetricRules() {
+		cm.Log.Println("[WARN] addNewMetrics DEPRECATED - using Config.Check.MetricRules")
 		return false
 	}
 
@@ -153,8 +153,8 @@ func (cm *CheckManager) addNewMetrics(newMetrics map[string]*api.CheckBundleMetr
 
 // inventoryMetrics DEPRECATED creates list of active metrics in check bundle
 func (cm *CheckManager) inventoryMetrics() {
-	if cm.UsingDenyList() {
-		cm.Log.Println("[WARN] inventoryMetrics DEPRECATED - using Config.Check.MetricDenyList")
+	if cm.UsingMetricRules() {
+		cm.Log.Println("[WARN] inventoryMetrics DEPRECATED - using Config.Check.MetricRules")
 		return
 	}
 

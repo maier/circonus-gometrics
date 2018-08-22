@@ -21,8 +21,8 @@ import (
 
 // UpdateCheck DEPRECATED determines if the check needs to be updated (new metrics, tags, etc.)
 func (cm *CheckManager) UpdateCheck(newMetrics map[string]*api.CheckBundleMetric) {
-	if cm.UsingDenyList() {
-		cm.Log.Println("[WARN] UpdateCheck DEPRECATED - using Config.Check.MetricDenyList")
+	if cm.UsingMetricRules() {
+		cm.Log.Println("[WARN] UpdateCheck DEPRECATED - using Config.Check.MetricRules")
 		return
 	}
 
@@ -211,7 +211,7 @@ func (cm *CheckManager) initializeTrapURL() error {
 	// retain to facilitate metric management (adding new metrics specifically)
 	cm.checkBundle = checkBundle
 
-	if !cm.UsingDenyList() {
+	if !cm.UsingMetricRules() {
 		// DEPRECATED - no longer need t omanage metrics - use check bundle metric_blacklists attribute
 		cm.inventoryMetrics()
 	}
@@ -316,12 +316,23 @@ func (cm *CheckManager) createNewCheck() (*api.CheckBundle, *api.Broker, error) 
 		return nil, nil, err
 	}
 
+	metrics := []api.CheckBundleMetric{}
+	for _, allow := range cm.checkMetricRules.Allow {
+		units := allow.Units
+		metrics = append(metrics, api.CheckBundleMetric{
+			Name:   allow.Name,
+			Type:   allow.Type,
+			Status: "active",
+			Units:  &units,
+		})
+	}
+
 	chkcfg := &api.CheckBundle{
 		Brokers:        []string{broker.CID},
 		Config:         make(map[config.Key]string),
 		DisplayName:    string(cm.checkDisplayName),
-		Metrics:        []api.CheckBundleMetric{},
-		MetricDenyList: cm.checkMetricDenyList,
+		Metrics:        metrics,
+		MetricDenyList: cm.checkMetricRules.Deny,
 		MetricLimit:    config.DefaultCheckBundleMetricLimit,
 		Notes:          cm.getNotes(),
 		Period:         60,

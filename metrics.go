@@ -8,7 +8,7 @@ import "strings"
 
 // SetMetricTags DEPRECATED sets the tags for the named metric and flags a check update is needed
 func (m *CirconusMetrics) SetMetricTags(name string, tags []string) bool {
-	if m.check.UsingDenyList() {
+	if m.check.UsingMetricRules() {
 		m.Log.Println("circonusgometrics.SetMetricTags DEPRECATED - use stream tags metric_name|ST[a=val,b=val,...] format")
 		delete(m.metricTags, name)
 		return m.AddMetricTags(name, tags)
@@ -18,7 +18,7 @@ func (m *CirconusMetrics) SetMetricTags(name string, tags []string) bool {
 
 // AddMetricTags DEPRECATED appends tags to any existing tags for the named metric and flags a check update is needed
 func (m *CirconusMetrics) AddMetricTags(name string, tags []string) bool {
-	if m.check.UsingDenyList() {
+	if m.check.UsingMetricRules() {
 		m.Log.Println("circonusgometrics.AddMetricTags DEPRECATED - use stream tags in name: metric_name|ST[a=val,b=val,...]")
 		if _, exists := m.metricTags[name]; !exists {
 			m.metricTags[name] = map[string]string{}
